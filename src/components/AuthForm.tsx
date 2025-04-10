@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { login, signup } from '../api/auth'; // Import the API functions
+import { login, signup } from '../api/auth';
 
 interface AuthFormProps {
   type: 'login' | 'signup';
@@ -11,23 +11,42 @@ export function AuthForm({ type }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(''); // Add state for error messages
+  const [message, setMessage] = useState('');
   const navigate = useNavigate();
+
+  const validateForm = (): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setMessage('Please enter a valid email address');
+      return false;
+    }
+    if (password.length < 6) {
+      setMessage('Password must be at least 6 characters long');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     setLoading(true);
-    setError(''); // Clear previous errors
+    setMessage('');
 
     try {
-      // Call the appropriate API function based on the type
-      const data = type === 'login' ? await login(email, password) : await signup(email, password);
-      // Store the token in localStorage (or use a state management library)
-      localStorage.setItem('token', data.token);
-      // Redirect to the dashboard
-      navigate('/dashboard');
+      if (type === 'login') {
+        const data = await login(email, password);
+        localStorage.setItem('token', data.token);
+        setMessage('Login successful');
+        setTimeout(() => navigate('/dashboard'), 1500);
+      } else {
+        const data = await signup(email, password);
+        setMessage(data.message || 'Signup successful');
+        setTimeout(() => navigate('/login'), 1500);
+      }
     } catch (err: any) {
-      setError(err.message || `${type === 'login' ? 'Login' : 'Signup'} failed`);
+      setMessage(err.message || `${type === 'login' ? 'Login' : 'Signup'} failed`);
     } finally {
       setLoading(false);
     }
@@ -35,7 +54,17 @@ export function AuthForm({ type }: AuthFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
-      {error && <p className="text-red-500 text-sm text-center">{error}</p>} {/* Display error messages */}
+      {message && (
+        <p
+          className={`text-sm text-center ${
+            message.includes('failed') || message.includes('valid') || message.includes('least')
+              ? 'text-red-500'
+              : 'text-green-500'
+          }`}
+        >
+          {message}
+        </p>
+      )}
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
           Email
@@ -47,6 +76,7 @@ export function AuthForm({ type }: AuthFormProps) {
           onChange={(e) => setEmail(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           required
+          disabled={loading}
         />
       </div>
 
@@ -61,6 +91,7 @@ export function AuthForm({ type }: AuthFormProps) {
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           required
+          disabled={loading}
         />
       </div>
 

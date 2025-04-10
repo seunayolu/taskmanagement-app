@@ -1,29 +1,62 @@
 import axios from 'axios';
 
-// Use the environment variable for the backend URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-export const login = async (email: string, password: string) => {
+interface LoginResponse {
+  token: string;
+}
+
+interface SignupResponse {
+  message: string;
+}
+
+interface VerifyResponse {
+  valid: boolean;
+  userId: number;
+  error?: string;
+}
+
+interface ErrorResponse {
+  error: string;
+}
+
+export const signup = async (email: string, password: string): Promise<SignupResponse> => {
   try {
-    const response = await api.post('/login', { email, password });
-    return response.data; // e.g., { token: "jwt-token", user: { id: 1, email: "test@example.com" } }
+    const response = await api.post('/auth/signup', { email, password });
+    return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Login failed');
+    const errorResponse: ErrorResponse = error.response?.data || { error: 'Signup failed' };
+    throw new Error(errorResponse.error);
   }
 };
 
-export const signup = async (email: string, password: string) => {
+export const login = async (email: string, password: string): Promise<LoginResponse> => {
   try {
-    const response = await api.post('/signup', { email, password });
+    const response = await api.post('/auth/login', { email, password });
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || 'Signup failed');
+    const errorResponse: ErrorResponse = error.response?.data || { error: 'Login failed' };
+    throw new Error(errorResponse.error);
   }
+};
+
+export const verifyToken = async (token: string): Promise<VerifyResponse> => {
+  try {
+    const response = await api.post('/auth/verify', { token });
+    return response.data;
+  } catch (error: any) {
+    const errorResponse: ErrorResponse = error.response?.data || { error: 'Token verification failed' };
+    throw new Error(errorResponse.error);
+  }
+};
+
+export const logout = (): void => {
+  localStorage.removeItem('token');
 };
